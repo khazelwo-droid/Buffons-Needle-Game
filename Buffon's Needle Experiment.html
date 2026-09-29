@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buffon's Needle Pi Estimator - Pro Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-main: #1a202c;
+            --text-muted: #718096;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary: #0d9488;
+            --secondary-hover: #0f766e;
+            --danger: #ef4444;
+            --accent: #3182ce;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-main);
+        }
+        h1 { margin: 0 0 8px 0; color: #0f172a; font-weight: 800; font-size: 2.25rem; letter-spacing: -0.025em; }
+        p.subtitle { margin-top: 0; margin-bottom: 30px; color: var(--text-muted); text-align: center; max-width: 650px; font-size: 1.1rem;}
+        
+        .explanation-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
+            max-width: 1000px;
+            width: 100%;
+            margin-bottom: 25px;
+            box-sizing: border-box;
+            border: 1px solid #e2e8f0;
+        }
+        .explanation-card h3 { margin-top: 0; color: #0f172a; font-size: 1.4rem; }
+
+        .formula-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 1.8rem;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 6px solid var(--secondary);
+            margin: 20px 0;
+            font-family: 'Cambria', 'Times New Roman', serif;
+            font-weight: bold;
+        }
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            line-height: 1.1;
+        }
+        .numerator { padding-bottom: 4px; text-align: center; }
+        .denominator { border-top: 2px solid #334155; padding-top: 4px; text-align: center; }
+
+        .variable-list { list-style-type: none; padding-left: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+        .variable-list li { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #edf2f7; line-height: 1.4; }
+        .var-name { font-weight: bold; font-family: monospace; background: #e0e7ff; padding: 3px 8px; border-radius: 6px; color: var(--primary); font-size: 1.05rem; margin-right: 4px; }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+            max-width: 1000px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #e2e8f0;
+        }
+        .canvas-area { position: relative; display: flex; align-items: center; min-width: 480px; justify-content: center; }
+        canvas {
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            background-color: #f8fafc;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            transition: width 0.3s ease;
+        }
+        .controls { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .controls h3 { margin-top: 0; color: #334155; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;}
+        
+        .input-group {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .input-field { display: flex; flex-direction: column; }
+        .input-field label { font-size: 0.85em; font-weight: 700; color: #475569; margin-bottom: 6px; }
+        .input-field input { padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; font-weight: 600; }
+        .input-field input:focus { outline: none; border-color: var(--primary); }
+        
+        .dashboard { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 1.05rem; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { font-weight: 600; color: #475569; }
+        .stat-value { font-family: 'Courier New', Courier, monospace; font-weight: 700; color: var(--accent); }
+        
+        .pi-highlight {
+            font-size: 1.75rem;
+            color: var(--danger);
+            font-weight: 800;
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff5f5;
+            border-radius: 10px;
+            border: 2px dashed #fca5a5;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        button:active { transform: scale(0.98); }
+        .btn-1 { background-color: var(--primary); color: white; }
+        .btn-1:hover { background-color: var(--primary-hover); }
+        .btn-10 { background-color: var(--accent); color: white; }
+        .btn-10:hover { background-color: #2b6cb0; }
+        .btn-500 { background-color: var(--secondary); color: white; }
+        .btn-500:hover { background-color: var(--secondary-hover); }
+        .btn-1000 { background-color: #f59e0b; color: white; }
+        .btn-1000:hover { background-color: #d97706; }
+        .btn-100k { background-color: #1e293b; color: white; grid-column: span 2; font-size: 1.05rem; letter-spacing: 0.02em; }
+        .btn-100k:hover { background-color: #0f172a; }
+        .btn-clear { background-color: #e2e8f0; color: #475569; grid-column: span 2; box-shadow: none; margin-top: 5px; }
+        .btn-clear:hover { background-color: #cbd5e1; color: #1e293b; }
+
+        @media (max-width: 850px) {
+            .container { flex-direction: column; }
+            .canvas-area { min-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Buffon's Needle Experiment</h1>
+    <p class="subtitle">An advanced interactive simulation demonstrating how randomized geometric vectors converge organically to calculate the value of Pi (&pi;).</p>
+
+    <div class="explanation-card">
+        <h3>The Mathematical Formula Breakdown</h3>
+        <p>When an object of uniform length is tossed completely at random onto a grid of parallel lines, the intersection criteria relies on circle properties and trigonometry:</p>
+        
+        <div class="formula-container">
+            <span>Probability (P) = </span>
+            <div class="fraction">
+                <div class="numerator">2 &times; L</div>
+                <div class="denominator">D &times; &pi;</div>
+            </div>
+        </div>
+
+        <h4>Variable Matrix:</h4>
+        <ul class="variable-list">
+            <li><span class="var-name">P</span> <strong>Probability of Intersection:</strong> The ratio of hits defined by the formula <span style="color:var(--accent); font-weight:bold;">C &divide; N</span>.</li>
+            <li><span class="var-name">C</span> <strong>Line Crosses:</strong> The total number of needles that physically intersect or cross any grid line.</li>
+            <li><span class="var-name">N</span> <strong>Total Drops:</strong> The cumulative number of needles randomly dropped onto the field.</li>
+            <li><span class="var-name">L</span> <strong>Needle Length:</strong> Input vector length in pixels.</li>
+            <li><span class="var-name">D</span> <strong>Line Spacing:</strong> Width between the parallel floorboard lines.</li>
+            <li><span class="var-name">&pi;</span> <strong>Isolated Pi value:</strong> Formulated using inverse probabilities:
+                <div style="font-family: monospace; font-weight: bold; color: var(--danger); margin-top: 5px;">&pi; = (2 &times; L &times; N) / (D &times; C)</div>
+            </li>
+        </ul>
+    </div>
+    <div class="container">
+        <div class="canvas-area">
+            <canvas id="experimentCanvas" width="480" height="400"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div>
+                <h3>Configuration (L &le; D)</h3>
+                <div class="input-group">
+                    <div class="input-field">
+                        <label for="needleLenInput">Needle Length (L):</label>
+                        <input type="number" id="needleLenInput" value="40" min="10" max="100" onchange="handleParamChange()">
+                    </div>
+                    <div class="input-field">
+                        <label for="lineSpaceInput">Line Spacing (D):</label>
+                        <input type="number" id="lineSpaceInput" value="80" min="40" max="160" onchange="handleParamChange()">
+                    </div>
+                </div>
+
+                <h3>Live Dashboard</h3>
+                <div class="dashboard">
+                    <div class="stat-row">
+                        <span class="stat-label">Total Drops (N):</span>
+                        <span id="totalDrops" class="stat-value" style="color: #0f172a;">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Line Crosses (C):</span>
+                        <span id="crosses" class="stat-value" style="color: var(--secondary);">0</span>
+                    </div>
+                    <div class="pi-highlight">
+                        Estimated &pi;: <span id="piEstimate">0.0000</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="btn-grid">
+                    <button class="btn-1" onclick="dropNeedles(1)">Drop 1</button>
+                    <button class="btn-10" onclick="dropNeedles(10)">Drop 10</button>
+                    <button class="btn-500" onclick="dropNeedles(500)">Drop 500</button>
+                    <button class="btn-1000" onclick="dropNeedles(1000)">Drop 1,000</button>
+                    <button class="btn-100k" onclick="dropNeedles(100000)">🚀 Drop 100,000 (Instant Math)</button>
+                    <button class="btn-clear" onclick="resetExperiment()">Clear Simulation Workspace</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('experimentCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let lineSpacing = 80; 
+        let needleLength = 40; 
+        let totalNeedles = 0;
+        let totalCrosses = 0;
+
+        function drawFloorLines() {
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 3;
+            for (let x = 0; x <= canvas.width; x += lineSpacing) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        function handleParamChange() {
+            let lInput = parseInt(document.getElementById('needleLenInput').value) || 40;
+            let dInput = parseInt(document.getElementById('lineSpaceInput').value) || 80;
+
+            if (lInput > dInput) {
+                alert("Needle Length (L) cannot be larger than Line Spacing (D). Setting L equal to D.");
+                lInput = dInput;
+                document.getElementById('needleLenInput').value = lInput;
+            }
+
+            needleLength = lInput;
+            lineSpacing = dInput;
+
+            // FIX: Dynamic Canvas Width adjustment to eliminate edge distortion effects
+            const perfectColumns = Math.round(480 / lineSpacing);
+            canvas.width = perfectColumns * lineSpacing;
+
+            resetExperiment();
+        }
+
+        function dropNeedles(count) {
+            const maxRender = count > 1000 ? 1000 : count;
+
+            if (count > 100) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawFloorLines();
+            }
+
+            for (let i = 0; i < count; i++) {
+                const cx = Math.random() * canvas.width;
+                const cy = Math.random() * canvas.height;
+                const theta = Math.random() * Math.PI * 2;
+
+                const x1 = cx - (needleLength / 2) * Math.cos(theta);
+                const y1 = cy - (needleLength / 2) * Math.sin(theta);
+                const x2 = cx + (needleLength / 2) * Math.cos(theta);
+                const y2 = cy + (needleLength / 2) * Math.sin(theta);
+
+                let crossed = false;
+                for (let x = 0; x <= canvas.width; x += lineSpacing) {
+                    if ((x1 <= x && x2 >= x) || (x2 <= x && x1 >= x)) {
+                        crossed = true;
+                        break;
+                    }
+                }
+
+                totalNeedles++;
+                if (crossed) totalCrosses++;
+
+                if (i < maxRender) {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.lineWidth = count > 100 ? 1 : 2;
+                    ctx.strokeStyle = crossed ? 'rgba(239, 68, 68, 0.65)' : 'rgba(13, 148, 136, 0.45)'; 
+                    ctx.stroke();
+                }
+            }
+
+            if (count > 1000) {
+                ctx.fillStyle = '#475569';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(`✨ Rendered top 1,000 lines cleanly to avoid crash`, 15, 25);
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('totalDrops').innerText = totalNeedles.toLocaleString();
+            document.getElementById('crosses').innerText = totalCrosses.toLocaleString();
+            
+            if (totalCrosses > 0) {
+                const piEst = (2 * needleLength * totalNeedles) / (lineSpacing * totalCrosses);
+                document.getElementById('piEstimate').innerText = piEst.toFixed(6);
+            } else {
+                document.getElementById('piEstimate').innerText = "0.000000";
+            }
+        }
+
+        function resetExperiment() {
+            totalNeedles = 0;
+            totalCrosses = 0;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFloorLines();
+            updateUI();
+        }
+
+        // Initialize setup
+        handleParamChange();
+    </script>
+</body>
+</html>
+
